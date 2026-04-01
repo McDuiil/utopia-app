@@ -9,7 +9,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@100;200;300;400;500;600&family=JetBrains+Mono:wght@200;300;400&display=swap" rel="stylesheet">
 <style>
-/* 样式保持与之前完全一致，省略重复内容以节省篇幅，实际使用时保留完整样式 */
+/* 样式与之前完全一致，此处略去以节省篇幅，实际使用时保留完整样式 */
 :root {
   --ios-blue:#007AFF; --ios-green:#34C759; --ios-orange:#FF9500; --ios-red:#FF3B30; --ios-teal:#5AC8FA;
   --bg0:#000000; --bg1:#0a0a0f; --bg2:#111118; --bg3:#1c1c24; --glass:rgba(255,255,255,0.05);
@@ -209,6 +209,90 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   const DB_KEY = "utopia_v10";
   const GIST_FILENAME = 'utopia_data.json';
 
+  // ------------------- 细粒度合并函数 -------------------
+  function safeMerge(remote, local) {
+    // remote: 远程数据（旧），local: 本地新数据
+    // 返回合并后的对象，以 local 为准，但保留 remote 中 local 没有的字段，并特殊处理 days
+    if (!remote) return local;
+    const output = { ...remote };
+
+    // 1. 处理顶层普通字段（非 days 且非 profile 的字段）
+    for (let key in local) {
+      if (key === 'days' || key === 'profile') continue;
+      // 如果是对象，递归合并，否则直接覆盖
+      if (local[key] && typeof local[key] === 'object' && !Array.isArray(local[key])) {
+        output[key] = safeMerge(remote[key], local[key]);
+      } else {
+        output[key] = local[key];
+      }
+    }
+
+    // 2. 处理 profile
+    if (local.profile) {
+      if (!output.profile) output.profile = {};
+      output.profile = safeMerge(remote.profile, local.profile);
+    }
+
+    // 3. 处理 days（最关键的合并）
+    if (local.days) {
+      if (!output.days) output.days = {};
+      for (let dateKey in local.days) {
+        const remoteDay = output.days[dateKey] || {};
+        const localDay = local.days[dateKey];
+        output.days[dateKey] = mergeDay(remoteDay, localDay);
+      }
+    }
+
+    return output;
+  }
+
+  function mergeDay(remoteDay, localDay) {
+    const merged = { ...remoteDay };
+    // checked: 数组取并集，去重
+    if (localDay.checked && Array.isArray(localDay.checked)) {
+      const set = new Set([...(remoteDay.checked || []), ...localDay.checked]);
+      merged.checked = Array.from(set);
+    } else {
+      merged.checked = localDay.checked || remoteDay.checked || [];
+    }
+    // s, c: 如果本地有值且大于0，用本地；否则用远程
+    if (localDay.s !== undefined && localDay.s > 0) merged.s = localDay.s;
+    else if (remoteDay.s !== undefined) merged.s = remoteDay.s;
+    if (localDay.c !== undefined && localDay.c > 0) merged.c = localDay.c;
+    else if (remoteDay.c !== undefined) merged.c = remoteDay.c;
+    // ps, pc: 字符串，取并集（去重）
+    if (localDay.ps !== undefined || remoteDay.ps !== undefined) {
+      const localTags = localDay.ps ? localDay.ps.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const remoteTags = remoteDay.ps ? remoteDay.ps.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const allTags = [...new Set([...remoteTags, ...localTags])];
+      merged.ps = allTags.join(',');
+    }
+    if (localDay.pc !== undefined || remoteDay.pc !== undefined) {
+      const localTags = localDay.pc ? localDay.pc.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const remoteTags = remoteDay.pc ? remoteDay.pc.split(',').map(t => t.trim()).filter(Boolean) : [];
+      const allTags = [...new Set([...remoteTags, ...localTags])];
+      merged.pc = allTags.join(',');
+    }
+    // w: 如果本地有值（非空），用本地；否则用远程
+    if (localDay.w !== undefined && localDay.w !== null && localDay.w !== 0) merged.w = localDay.w;
+    else if (remoteDay.w !== undefined) merged.w = remoteDay.w;
+    // done: 如果任一为 true，则为 true
+    merged.done = !!(localDay.done || remoteDay.done);
+    // p, m, bmr: 以本地为准，但若本地无则用远程
+    merged.p = localDay.p !== undefined ? localDay.p : remoteDay.p;
+    merged.m = localDay.m !== undefined ? localDay.m : remoteDay.m;
+    merged.bmr = localDay.bmr !== undefined ? localDay.bmr : remoteDay.bmr;
+    // customMeals: 合并对象，本地覆盖远程，但保留远程中本地没有的 meal 索引
+    if (localDay.customMeals || remoteDay.customMeals) {
+      merged.customMeals = { ...(remoteDay.customMeals || {}) };
+      for (let mealIdx in (localDay.customMeals || {})) {
+        merged.customMeals[mealIdx] = localDay.customMeals[mealIdx];
+      }
+    }
+    // 其他字段（如 stats）可以忽略，因为会动态重新计算
+    return merged;
+  }
+
   // ------------------- Gist 云同步 -------------------
   function getGistConfig() {
     return {
@@ -228,11 +312,19 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     return null;
   }
 
-  async function gistSave(token, gistId, state) {
+  // 修改后的 gistSave：先拉取远程，用 safeMerge 合并，再写入
+  async function gistSave(token, gistId, localState) {
+    let remoteState = null;
+    try {
+      remoteState = await gistLoad(token, gistId);
+    } catch (e) {
+      console.warn('拉取远程数据失败，将直接写入本地', e);
+    }
+    const finalState = remoteState ? safeMerge(remoteState, localState) : localState;
     const res = await fetch(`https://api.github.com/gists/${gistId}`, {
       method: 'PATCH',
       headers: { 'Authorization': `Bearer ${token}`, 'Content-Type': 'application/json' },
-      body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(state, null, 2) } } })
+      body: JSON.stringify({ files: { [GIST_FILENAME]: { content: JSON.stringify(finalState, null, 2) } } })
     });
     if (!res.ok) throw new Error('写入失败 ' + res.status);
   }
@@ -252,7 +344,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     return data.id;
   }
 
-  // 打开云同步设置面板
+  // 打开云同步设置面板（优化版：不再手动合并，只验证连接）
   function openSyncSettings() {
     const cfg = getGistConfig();
     const statusText = cfg.token && cfg.gistId ? '✅ 已配置云同步' : '⚠️ 未配置云同步';
@@ -291,12 +383,24 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
           gistId = await gistCreate(token, S);
           statusEl.innerText = '✅ 已创建 Gist！正在保存配置...';
         } else {
+          // 已有 Gist ID：只验证连接，不修改本地 S（避免提前合并）
+          statusEl.innerText = '🔄 验证连接...';
           await gistLoad(token, gistId);
-          statusEl.innerText = '✅ 连接成功！';
+          statusEl.innerText = '✅ 连接成功！正在保存配置...';
         }
         localStorage.setItem('utopia_github_token', token);
         localStorage.setItem('utopia_gist_id', gistId);
+        // 调用 gistSave，内部会拉取远程并安全合并
         await gistSave(token, gistId, S);
+        // 合并后重新加载本地 S（使当前页面拥有最新数据）
+        const latest = await gistLoad(token, gistId);
+        if (latest) {
+          S = latest;
+          if (!S.statsCache) S.statsCache = {};
+          for (let k in S.days) migrateDay(S.days[k]);
+          localStorage.setItem(DB_KEY, JSON.stringify(S));
+          renderAll();
+        }
         statusEl.innerText = '✅ 配置完成，数据已同步到云端！';
         setTimeout(() => closeBase(), 1500);
       } catch(e) {
@@ -332,7 +436,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   let activeK = getK(new Date());
   let currentTrainType = null;
 
-  // ------------------- 辅助函数 -------------------
+  // ------------------- 辅助函数（保持不变） -------------------
   function getK(date) {
     const d = new Date(date);
     return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}-${String(d.getDate()).padStart(2,'0')}`;
@@ -340,7 +444,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
 
   function save() {
     localStorage.setItem(DB_KEY, JSON.stringify(S));
-    // 异步同步到 Gist，不阻塞 UI
     const cfg = getGistConfig();
     if (cfg.token && cfg.gistId) {
       gistSave(cfg.token, cfg.gistId, S).catch(e => console.warn('Gist 保存失败:', e));
@@ -348,7 +451,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   }
 
   async function loadState() {
-    // 优先从 Gist 加载
     const cfg = getGistConfig();
     if (cfg.token && cfg.gistId) {
       try {
@@ -357,12 +459,11 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
           S = remote;
           if (!S.statsCache) S.statsCache = {};
           for (let k in S.days) migrateDay(S.days[k]);
-          localStorage.setItem(DB_KEY, JSON.stringify(S)); // 更新本地缓存
+          localStorage.setItem(DB_KEY, JSON.stringify(S));
           return;
         }
       } catch(e) { console.warn('Gist 加载失败，回退到本地:', e); }
     }
-    // 回退到 localStorage
     const stored = localStorage.getItem(DB_KEY);
     if (stored) {
       try {
@@ -378,9 +479,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
       S = JSON.parse(JSON.stringify(defaultState));
     }
     if (!S.statsCache) S.statsCache = {};
-    for (let k in S.days) {
-      migrateDay(S.days[k]);
-    }
+    for (let k in S.days) migrateDay(S.days[k]);
   }
 
   function migrateDay(day) {
@@ -500,7 +599,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     return { kcal: totalKcal, carb: totalCarb, prot: totalProt, fat: totalFat };
   }
 
-  // ------------------- 渲染函数 -------------------
+  // ------------------- 渲染函数（保持不变） -------------------
   function renderAll() {
     const d = getDay(activeK);
     document.getElementById('display-date').innerText = activeK;
@@ -513,8 +612,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     renderDashboard(d, plan);
     renderTimeline();
     updateFooter(d, plan);
-
-    // 不再直接绑定按钮事件，改用事件委托
   }
 
   function renderMeals(d, plan) {
@@ -648,7 +745,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     }
   }
 
-  // ------------------- 交互函数 -------------------
+  // ------------------- 交互函数（保持不变） -------------------
   function toggleMeal(idx) {
     const d = getDay(activeK);
     if (d.checked.includes(idx)) {
@@ -702,7 +799,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     ipt.value = val;
   }
 
-  // 餐食编辑器相关
+  // 餐食编辑器相关（保持不变）
   function openMealEditor() {
     const d = getDay(activeK);
     const plan = getPlan(d.p, d.m);
@@ -893,7 +990,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     renderAll();
   }
 
-  // 档案与设置
+  // 档案与设置（保持不变）
   function openProfile() {
     const p = S.profile;
     const html = `
@@ -1441,7 +1538,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
         e.target.classList.toggle('active');
       }
     });
-    // 事件委托：自定义餐食按钮点击
     document.getElementById('sec-title').addEventListener('click', (e) => {
       if (e.target.classList.contains('edit-meal-icon') || e.target.closest('.edit-meal-icon')) {
         openMealEditor();
