@@ -539,17 +539,19 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   function updateStatsForDate(k) {
     const d = S.days[k];
     const plan = getPlan(d.p, d.m);
+    const mealList = d.customMeals && d.customMeals._mealList;
+    const meals = mealList || plan.meals;
     let intake = 0;
     d.checked.forEach(idx => {
-      const m = getMeal(plan, idx, d.customMeals);
-      intake += m.k;
+      const m = mealList ? (meals[idx] || {k:0}) : getMeal(plan, idx, d.customMeals);
+      intake += (m.k || 0);
     });
     const bmr = d.bmr || calculateBMR(S.profile);
     const deficit = intake - (bmr + d.s + d.c);
     S.statsCache[k] = {
       deficit,
       mealsDone: d.checked.length,
-      totalMeals: plan.meals.length,
+      totalMeals: meals.length,
       sportCompleted: (d.s > 0 || d.ps) || (d.c > 0 || d.pc),
       intake
     };
@@ -565,10 +567,11 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   function isCardioValid(d) { return d.c > 0 || (d.pc && d.pc.trim() !== ''); }
 
   function getNetDeficit(d, plan) {
+    const mealList = d.customMeals && d.customMeals._mealList;
     let intake = 0;
     d.checked.forEach(idx => {
-      const m = getMeal(plan, idx, d.customMeals);
-      intake += m.k;
+      const m = mealList ? (mealList[idx] || {k:0}) : getMeal(plan, idx, d.customMeals);
+      intake += (m.k || 0);
     });
     const bmr = d.bmr || calculateBMR(S.profile);
     return intake - (bmr + d.s + d.c);
