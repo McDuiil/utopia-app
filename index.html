@@ -34,8 +34,8 @@ body{ background:var(--bg0); color:var(--text1); font-family:var(--sans); paddin
 .app-container{ max-width:480px; margin:0 auto; padding:20px; }
 .header{ display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; flex-wrap:wrap; gap:10px; }
 .header h1{ font-weight:200; font-size:24px; letter-spacing:-1px; }
-.btn-group{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-.icon-btn{ background:var(--glass); border:1px solid var(--border-light); padding:8px 14px; border-radius:12px; color:var(--text2); font-size:12px; cursor:pointer; transition:0.2s; }
+.btn-group{ display:flex; gap:5px; flex-wrap:nowrap; justify-content:flex-end; }
+.icon-btn{ background:var(--glass); border:1px solid var(--border-light); padding:6px 8px; border-radius:12px; color:var(--text2); font-size:11px; cursor:pointer; transition:0.2s; flex-shrink:1; white-space:nowrap; }
 .timeline{ display:flex; gap:10px; overflow-x:auto; padding-bottom:15px; margin-bottom:10px; scrollbar-width:none; }
 .time-btn{ flex:0 0 55px; height:70px; background:var(--glass); border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:1px solid transparent; position:relative; }
 .time-btn.active{ background:var(--ios-blue); border-color:var(--ios-teal); }
@@ -539,9 +539,11 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   function updateStatsForDate(k) {
     const d = S.days[k];
     const plan = getPlan(d.p, d.m);
+    const mealList = d.customMeals._mealList;
+    const meals = mealList || plan.meals;
     let intake = 0;
     d.checked.forEach(idx => {
-      const m = getMeal(plan, idx, d.customMeals);
+      const m = mealList ? (meals[idx] || {k:0}) : getMeal(plan, idx, d.customMeals);
       intake += m.k;
     });
     const bmr = d.bmr || calculateBMR(S.profile);
@@ -549,7 +551,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     S.statsCache[k] = {
       deficit,
       mealsDone: d.checked.length,
-      totalMeals: plan.meals.length,
+      totalMeals: meals.length,
       sportCompleted: (d.s > 0 || d.ps) || (d.c > 0 || d.pc),
       intake
     };
@@ -575,7 +577,9 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   }
 
   function isDayComplete(d, plan) {
-    return d.checked.length === plan.meals.length && (isStrengthValid(d) || isCardioValid(d));
+    const mealList = d.customMeals._mealList;
+    const totalMeals = mealList ? mealList.length : plan.meals.length;
+    return d.checked.length === totalMeals && (isStrengthValid(d) || isCardioValid(d));
   }
 
   function estimateFromIngredients(ings) {
@@ -615,9 +619,12 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   }
 
   function renderMeals(d, plan) {
+    // 若有 _mealList（用户自定义了餐食结构），优先使用它渲染
+    const mealList = d.customMeals._mealList;
+    const meals = mealList || plan.meals;
     let mealHtml = '';
-    for (let idx = 0; idx < plan.meals.length; idx++) {
-      const m = getMeal(plan, idx, d.customMeals);
+    for (let idx = 0; idx < meals.length; idx++) {
+      const m = mealList ? meals[idx] : getMeal(plan, idx, d.customMeals);
       const isChecked = d.checked.includes(idx);
       const c = Math.round(m.c ?? 0);
       const p = Math.round(m.p ?? 0);
@@ -657,7 +664,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     });
   }
 
-  function renderTrain(d) {
+    function renderTrain(d) {
     const strengthActive = isStrengthValid(d);
     const cardioActive = isCardioValid(d);
     const strengthTags = d.ps ? d.ps.split(',').filter(t => t.trim()) : [];
@@ -740,7 +747,8 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
       btn.innerText="确认完成今日计划";
       btn.classList.add('ready');
     } else {
-      btn.innerText = `还差 ${plan.meals.length-d.checked.length} 餐或未记录运动`;
+      const _totalM = (d.customMeals._mealList ? d.customMeals._mealList.length : plan.meals.length);
+      btn.innerText = `还差 ${_totalM-d.checked.length} 餐或未记录运动`;
       btn.classList.remove('ready');
     }
   }
@@ -799,72 +807,96 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     ipt.value = val;
   }
 
-  // 餐食编辑器相关（保持不变）
+  // 餐食编辑器相关
   function openMealEditor() {
     const d = getDay(activeK);
     const plan = getPlan(d.p, d.m);
-    let html = `<h2>自定义今日餐食</h2><p>修改食材列表，可点击“🔍 估算”自动计算热量宏量（基于内置食材库）</p>`;
-    for (let idx = 0; idx < plan.meals.length; idx++) {
-      const original = plan.meals[idx];
-      const custom = d.customMeals[idx];
-      const current = custom || original;
-      html += `
-        <div style="margin:20px 0; border-top:1px solid var(--border-light); padding-top:12px;">
-          <h3>${original.i} ${original.n}</h3>
-          <div id="meal-editor-${idx}">
-            ${current.ings.map((ig, iidx) => `
-              <div class="ingredient-item">
-                <input type="text" placeholder="食材名" value="${ig.n.replace(/"/g, '&quot;')}" data-meal="${idx}" data-ing="${iidx}" data-field="name" list="foodlist">
-                <input type="text" placeholder="用量" value="${ig.a.replace(/"/g, '&quot;')}" data-meal="${idx}" data-ing="${iidx}" data-field="amount">
-                <button class="remove-ingredient" data-meal="${idx}" data-ing="${iidx}">🗑️</button>
+
+    // 初始化 _mealList：记录当日完整餐食列表（含新增/删除/改名）
+    if (!d.customMeals._mealList) {
+      d.customMeals._mealList = plan.meals.map((m, idx) => {
+        const custom = d.customMeals[idx];
+        return custom ? { ...custom } : { ...m };
+      });
+    }
+    const mealList = d.customMeals._mealList;
+
+    function buildEditorHtml() {
+      let html = `<h2>自定义今日餐食</h2><p style="font-size:12px;color:var(--text3);margin-bottom:8px;">修改食材列表，可点击"🔍 估算"自动计算热量宏量（基于内置食材库）</p>`;
+      for (let idx = 0; idx < mealList.length; idx++) {
+        const current = mealList[idx];
+        html += `
+          <div style="margin:20px 0; border-top:1px solid var(--border-light); padding-top:12px;" id="meal-block-${idx}">
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+              <input type="text" id="meal-title-${idx}" value="${((current.i||'') + ' ' + (current.n||'')).trim()}" style="flex:1; background:var(--bg3); border:1px solid var(--border-light); padding:8px 12px; border-radius:12px; color:var(--text1); font-size:14px; font-weight:500;">
+              <button class="delete-meal-block" data-idx="${idx}" style="background:var(--ios-red); border:none; padding:6px 10px; border-radius:10px; color:white; cursor:pointer; font-size:12px; flex-shrink:0;">删除此餐</button>
+            </div>
+            <div id="meal-editor-${idx}">
+              ${current.ings.map((ig, iidx) => `
+                <div class="ingredient-item">
+                  <input type="text" placeholder="食材名" value="${ig.n.replace(/"/g, '&quot;')}" data-meal="${idx}" data-ing="${iidx}" data-field="name" list="foodlist">
+                  <input type="text" placeholder="用量" value="${ig.a.replace(/"/g, '&quot;')}" data-meal="${idx}" data-ing="${iidx}" data-field="amount">
+                  <button class="remove-ingredient" data-meal="${idx}" data-ing="${iidx}">🗑️</button>
+                </div>
+              `).join('')}
+              <button class="icon-btn add-ingredient" data-meal="${idx}">+ 添加食材</button>
+              <button class="icon-btn secondary-btn reset-meal" data-meal="${idx}">重置为默认</button>
+              <button class="icon-btn estimate-meal" data-meal="${idx}">🔍 估算</button>
+              <div class="macro-input-group">
+                <input type="number" placeholder="热量(kcal)" id="custom-kcal-${idx}" value="${current.k}">
+                <input type="number" placeholder="碳水(g)" id="custom-carb-${idx}" value="${current.c}">
+                <input type="number" placeholder="蛋白(g)" id="custom-protein-${idx}" value="${current.p}">
+                <input type="number" placeholder="脂肪(g)" id="custom-fat-${idx}" value="${current.f}">
               </div>
-            `).join('')}
-            <button class="icon-btn add-ingredient" data-meal="${idx}">+ 添加食材</button>
-            <button class="icon-btn secondary-btn reset-meal" data-meal="${idx}">重置为默认</button>
-            <button class="icon-btn estimate-meal" data-meal="${idx}">🔍 估算</button>
-            <div class="macro-input-group">
-              <input type="number" placeholder="热量(kcal)" id="custom-kcal-${idx}" value="${current.k}">
-              <input type="number" placeholder="碳水(g)" id="custom-carb-${idx}" value="${current.c}">
-              <input type="number" placeholder="蛋白(g)" id="custom-protein-${idx}" value="${current.p}">
-              <input type="number" placeholder="脂肪(g)" id="custom-fat-${idx}" value="${current.f}">
             </div>
           </div>
-        </div>
-      `;
+        `;
+      }
+      html += `<datalist id="foodlist">${Object.keys(FOOD_DB).map(f => `<option>${f}</option>`).join('')}</datalist>`;
+      html += `<button class="icon-btn" id="add-new-meal" style="width:100%; margin:12px 0; border:1px dashed var(--ios-teal); color:var(--ios-teal);">+ 新增一顿餐</button>`;
+      html += `<button class="primary-btn" id="save-custom-meals">保存所有修改</button>`;
+      return html;
     }
-    html += `<datalist id="foodlist">${Object.keys(FOOD_DB).map(f => `<option>${f}</option>`).join('')}</datalist>`;
-    html += `<button class="primary-btn" id="save-custom-meals">保存所有修改</button>`;
-    showBasePanel(html);
 
-    document.getElementById('save-custom-meals')?.addEventListener('click', saveCustomMeals);
-    document.querySelectorAll('.add-ingredient').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const mealIdx = parseInt(btn.dataset.meal);
-        addIngredient(mealIdx);
+    function refreshPanel() {
+      const panel = document.getElementById('base-panel-content');
+      panel.innerHTML = buildEditorHtml() + `<button id="closeBaseBtn" style="width:100%; color:var(--text3); border:none; background:none; margin-top:20px;">关闭</button>`;
+      document.getElementById('closeBaseBtn').addEventListener('click', closeBase);
+      bindEditorEvents();
+    }
+
+    function bindEditorEvents() {
+      document.getElementById('save-custom-meals')?.addEventListener('click', saveCustomMeals);
+      document.getElementById('add-new-meal')?.addEventListener('click', () => {
+        mealList.push({ n:'新增餐', i:'🍽️', t:'', k:0, c:0, p:0, f:0, ings:[{n:'食材名',a:'用量'}] });
+        refreshPanel();
       });
-    });
-    document.querySelectorAll('.reset-meal').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const mealIdx = parseInt(btn.dataset.meal);
-        resetMeal(mealIdx);
+      document.querySelectorAll('.delete-meal-block').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const idx = parseInt(btn.dataset.idx);
+          mealList.splice(idx, 1);
+          refreshPanel();
+        });
       });
-    });
-    document.querySelectorAll('.estimate-meal').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const mealIdx = parseInt(btn.dataset.meal);
-        estimateMeal(mealIdx);
+      document.querySelectorAll('.add-ingredient').forEach(btn => {
+        btn.addEventListener('click', () => addIngredient(parseInt(btn.dataset.meal)));
       });
-    });
-    document.querySelectorAll('.remove-ingredient').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const mealIdx = parseInt(btn.dataset.meal);
-        const ingIdx = parseInt(btn.dataset.ing);
-        removeIngredient(mealIdx, ingIdx);
+      document.querySelectorAll('.reset-meal').forEach(btn => {
+        btn.addEventListener('click', () => resetMeal(parseInt(btn.dataset.meal)));
       });
-    });
+      document.querySelectorAll('.estimate-meal').forEach(btn => {
+        btn.addEventListener('click', () => estimateMeal(parseInt(btn.dataset.meal)));
+      });
+      document.querySelectorAll('.remove-ingredient').forEach(btn => {
+        btn.addEventListener('click', () => removeIngredient(parseInt(btn.dataset.meal), parseInt(btn.dataset.ing)));
+      });
+    }
+
+    showBasePanel(buildEditorHtml());
+    bindEditorEvents();
   }
 
-  function addIngredient(mealIdx) {
+    function addIngredient(mealIdx) {
     const container = document.getElementById(`meal-editor-${mealIdx}`);
     const newIdx = container.querySelectorAll('.ingredient-item').length;
     const div = document.createElement('div');
@@ -951,37 +983,77 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
 
   function saveCustomMeals() {
     const d = getDay(activeK);
-    const plan = getPlan(d.p, d.m);
-    for (let mealIdx = 0; mealIdx < plan.meals.length; mealIdx++) {
-      const container = document.getElementById(`meal-editor-${mealIdx}`);
-      if (!container) continue;
-      const items = container.querySelectorAll('.ingredient-item');
-      const ings = [];
-      for (let i = 0; i < items.length; i++) {
-        const nameInput = items[i].querySelector('[data-field="name"]');
-        const amountInput = items[i].querySelector('[data-field="amount"]');
-        if (nameInput && amountInput && nameInput.value.trim() && amountInput.value.trim()) {
-          ings.push({ n: nameInput.value.trim(), a: amountInput.value.trim() });
+    const mealList = d.customMeals._mealList;
+
+    if (mealList) {
+      // 从编辑器 UI 读取最新数据，写回 _mealList
+      for (let idx = 0; idx < mealList.length; idx++) {
+        const titleInput = document.getElementById(`meal-title-${idx}`);
+        const container = document.getElementById(`meal-editor-${idx}`);
+        if (!container) continue;
+
+        // 解析标题（emoji + 名称）
+        if (titleInput) {
+          const raw = titleInput.value.trim();
+          // 简单分割：第一个 emoji 作为 i，其余作为 n
+          const emojiMatch = raw.match(/^(\p{Emoji_Presentation}|\p{Emoji}️)\s*/u);
+          if (emojiMatch) {
+            mealList[idx].i = emojiMatch[0].trim();
+            mealList[idx].n = raw.slice(emojiMatch[0].length).trim();
+          } else {
+            mealList[idx].i = '';
+            mealList[idx].n = raw;
+          }
         }
+
+        // 食材
+        const items = container.querySelectorAll('.ingredient-item');
+        const ings = [];
+        for (let i = 0; i < items.length; i++) {
+          const nameInput = items[i].querySelector('[data-field="name"]');
+          const amountInput = items[i].querySelector('[data-field="amount"]');
+          if (nameInput && amountInput && nameInput.value.trim() && amountInput.value.trim()) {
+            ings.push({ n: nameInput.value.trim(), a: amountInput.value.trim() });
+          }
+        }
+        if (ings.length > 0) mealList[idx].ings = ings;
+
+        // 宏量
+        const kcal = parseFloat(document.getElementById(`custom-kcal-${idx}`)?.value);
+        const carb = parseFloat(document.getElementById(`custom-carb-${idx}`)?.value);
+        const prot = parseFloat(document.getElementById(`custom-protein-${idx}`)?.value);
+        const fat  = parseFloat(document.getElementById(`custom-fat-${idx}`)?.value);
+        if (!isNaN(kcal)) mealList[idx].k = kcal;
+        if (!isNaN(carb)) mealList[idx].c = carb;
+        if (!isNaN(prot)) mealList[idx].p = prot;
+        if (!isNaN(fat))  mealList[idx].f = fat;
       }
-      const kcal = parseFloat(document.getElementById(`custom-kcal-${mealIdx}`).value);
-      const carb = parseFloat(document.getElementById(`custom-carb-${mealIdx}`).value);
-      const prot = parseFloat(document.getElementById(`custom-protein-${mealIdx}`).value);
-      const fat = parseFloat(document.getElementById(`custom-fat-${mealIdx}`).value);
-      if (ings.length > 0 && !isNaN(kcal) && !isNaN(carb) && !isNaN(prot) && !isNaN(fat)) {
-        const original = plan.meals[mealIdx];
-        d.customMeals[mealIdx] = {
-          n: original.n,
-          t: original.t,
-          i: original.i,
-          k: kcal,
-          c: carb,
-          p: prot,
-          f: fat,
-          ings: ings
-        };
-      } else {
-        delete d.customMeals[mealIdx];
+      d.customMeals._mealList = mealList;
+    } else {
+      // 兼容旧逻辑（没有 _mealList 时）
+      const plan = getPlan(d.p, d.m);
+      for (let mealIdx = 0; mealIdx < plan.meals.length; mealIdx++) {
+        const container = document.getElementById(`meal-editor-${mealIdx}`);
+        if (!container) continue;
+        const items = container.querySelectorAll('.ingredient-item');
+        const ings = [];
+        for (let i = 0; i < items.length; i++) {
+          const nameInput = items[i].querySelector('[data-field="name"]');
+          const amountInput = items[i].querySelector('[data-field="amount"]');
+          if (nameInput && amountInput && nameInput.value.trim() && amountInput.value.trim()) {
+            ings.push({ n: nameInput.value.trim(), a: amountInput.value.trim() });
+          }
+        }
+        const kcal = parseFloat(document.getElementById(`custom-kcal-${mealIdx}`).value);
+        const carb = parseFloat(document.getElementById(`custom-carb-${mealIdx}`).value);
+        const prot = parseFloat(document.getElementById(`custom-protein-${mealIdx}`).value);
+        const fat  = parseFloat(document.getElementById(`custom-fat-${mealIdx}`).value);
+        if (ings.length > 0 && !isNaN(kcal) && !isNaN(carb) && !isNaN(prot) && !isNaN(fat)) {
+          const original = plan.meals[mealIdx];
+          d.customMeals[mealIdx] = { n: original.n, t: original.t, i: original.i, k: kcal, c: carb, p: prot, f: fat, ings: ings };
+        } else {
+          delete d.customMeals[mealIdx];
+        }
       }
     }
     updateStatsForDate(activeK);
@@ -990,7 +1062,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     renderAll();
   }
 
-  // 档案与设置（保持不变）
+    // 档案与设置（保持不变）
   function openProfile() {
     const p = S.profile;
     const html = `
@@ -1005,7 +1077,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
       <hr style="margin:15px 0; border-color:var(--border-light);">
       <h3>目标设定</h3>
       <div><label>目标体重(kg)</label><input type="number" id="goalWeight" class="ios-input" value="${p.goalWeight || 70}"></div>
-      <div><label>每日赤字目标(kcal)</label><input type="number" id="goalDeficit" class="ios-input" value="${p.goalDeficit || 500}"></div>
       <div><label>目标体脂率(%)</label><input type="number" id="goalBodyFat" class="ios-input" value="${p.goalBodyFat || 12}"></div>
       <button class="primary-btn" id="saveProfileBtn">保存档案并更新BMR</button>
       <button class="primary-btn danger-btn" id="resetDataBtn" style="background:var(--ios-red); margin-top:10px;">重置所有数据</button>
@@ -1033,7 +1104,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
       useCustom: document.getElementById('useCustom').checked,
       customBMR: document.getElementById('useCustom').checked ? +document.getElementById('customBMR').value : null,
       goalWeight: +document.getElementById('goalWeight').value,
-      goalDeficit: +document.getElementById('goalDeficit').value,
+      goalDeficit: S.profile.goalDeficit || 500,
       goalBodyFat: +document.getElementById('goalBodyFat').value
     };
     S.profile = newProfile;
@@ -1235,7 +1306,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     const weightProgress = ((S.profile.goalWeight - latestWeight) / (S.profile.goalWeight - S.profile.weight) * 100) || 0;
     const todayPlan = getPlan(getDay(activeK).p, getDay(activeK).m);
     const todayDeficit = getNetDeficit(getDay(activeK), todayPlan);
-    const deficitProgress = (todayDeficit / S.profile.goalDeficit) * 100;
     let bodyFatProgress = 0;
     if (S.profile.bodyFat !== null && S.profile.goalBodyFat > 0) {
       bodyFatProgress = ((S.profile.bodyFat - S.profile.goalBodyFat) / (S.profile.bodyFat - 0)) * 100;
@@ -1252,11 +1322,11 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
       }
       avgDeficit = totalDeficit / 7;
       const currentPhase = getDay(activeK).p;
-      if (avgDeficit > -S.profile.goalDeficit*0.8 && currentPhase < 4) {
+      if (avgDeficit > -300 && currentPhase < 4) {
         suggestion = `
           <div class="suggestion-card">
             <strong>💡 阶段建议</strong><br>
-            最近7天平均赤字仅 ${Math.round(avgDeficit)} kcal，低于目标 ${S.profile.goalDeficit} kcal 的80%。<br>
+            最近7天平均赤字仅 ${Math.round(avgDeficit)} kcal，低于建议值 -300 kcal。<br>
             建议尝试进入阶段 ${currentPhase+1} 以提高减脂效率。
             <button class="icon-btn" style="margin-top:8px;" id="applySuggestionBtn">应用建议</button>
           </div>
@@ -1274,7 +1344,6 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
       ${suggestion}
       <div id="tabGoals" class="tab-content">
         <div class="goal-progress"><strong>体重目标</strong> ${latestWeight}kg → ${S.profile.goalWeight}kg<div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.max(0, weightProgress))}%"></div></div></div>
-        <div class="goal-progress"><strong>今日赤字目标</strong> ${Math.round(todayDeficit)} / ${S.profile.goalDeficit} kcal<div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.max(0, deficitProgress))}%"></div></div></div>
         <div class="goal-progress"><strong>体脂率目标</strong> ${S.profile.bodyFat !== null ? S.profile.bodyFat + '% → ' + S.profile.goalBodyFat + '%' : '未录入 → '+S.profile.goalBodyFat+'%'}<div class="progress-bar"><div class="progress-fill" style="width:${bodyFatProgress}%"></div></div></div>
       </div>
       <div id="tabCharts" class="tab-content hidden">
