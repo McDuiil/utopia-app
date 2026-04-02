@@ -34,8 +34,8 @@ body{ background:var(--bg0); color:var(--text1); font-family:var(--sans); paddin
 .app-container{ max-width:480px; margin:0 auto; padding:20px; }
 .header{ display:flex; flex-direction:column; align-items:flex-start; margin-bottom:20px; gap:8px; }
 .header h1{ font-weight:200; font-size:24px; letter-spacing:-1px; }
-.btn-group{ display:flex; gap:8px; flex-wrap:wrap; justify-content:flex-end; }
-.icon-btn{ background:var(--glass); border:1px solid var(--border-light); padding:8px 14px; border-radius:12px; color:var(--text2); font-size:12px; cursor:pointer; transition:0.2s; }
+.btn-group{ display:flex; gap:5px; flex-wrap:nowrap; justify-content:flex-start; }
+.icon-btn{ background:var(--glass); border:1px solid var(--border-light); padding:6px 8px; border-radius:12px; color:var(--text2); font-size:11px; cursor:pointer; transition:0.2s; flex-shrink:1; white-space:nowrap; }
 .timeline{ display:flex; gap:10px; overflow-x:auto; padding-bottom:15px; margin-bottom:10px; scrollbar-width:none; }
 .time-btn{ flex:0 0 55px; height:70px; background:var(--glass); border-radius:18px; display:flex; flex-direction:column; align-items:center; justify-content:center; cursor:pointer; border:1px solid transparent; position:relative; }
 .time-btn.active{ background:var(--ios-blue); border-color:var(--ios-teal); }
