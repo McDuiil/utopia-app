@@ -695,7 +695,9 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   }
 
   function isDayComplete(d, plan) {
-    return d.checked.length === plan.meals.length && (isStrengthValid(d) || isCardioValid(d));
+    const mealList = d.customMeals && d.customMeals._mealList;
+    const totalMeals = mealList ? mealList.length : plan.meals.length;
+    return d.checked.length === totalMeals && (isStrengthValid(d) || isCardioValid(d));
   }
 
   function estimateFromIngredients(ings) {
@@ -735,9 +737,11 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   }
 
   function renderMeals(d, plan) {
+    const mealList = d.customMeals && d.customMeals._mealList;
+    const meals = mealList || plan.meals;
     let mealHtml = '';
-    for (let idx = 0; idx < plan.meals.length; idx++) {
-      const m = getMeal(plan, idx, d.customMeals);
+    for (let idx = 0; idx < meals.length; idx++) {
+      const m = mealList ? meals[idx] : getMeal(plan, idx, d.customMeals);
       const isChecked = d.checked.includes(idx);
       const c = Math.round(m.c ?? 0);
       const p = Math.round(m.p ?? 0);
