@@ -2033,8 +2033,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   function addExerciseToTemplate(ti) {
     const allExercises = sportData.categories.flatMap(c => c.exercises.map(e => e.name));
     if (allExercises.length === 0) { alert('请先在动作库添加动作'); return; }
-    const name = prompt('输入动作名（可从库中选）：
-' + allExercises.join('、'));
+    const name = prompt('输入动作名（可从库中选）：\n' + allExercises.join('、'));
     if (!name || !name.trim()) return;
     sportData.templates[ti].exercises.push({ name: name.trim() });
     saveSportData();
