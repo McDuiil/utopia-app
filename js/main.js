@@ -1,25 +1,24 @@
 // ===== main.js: 初始化与事件绑定 =====
 
-// 动态创建全局导航栏（全新创建，不依赖原始结构）
+// 动态创建全局导航栏（放在 body 顶部，所有页面共享）
 function createGlobalNav() {
   if (document.getElementById('global-nav')) return;
   
-  // 创建外层容器
+  // 创建外层容器（占满全宽，用于背景和居中）
   const navBar = document.createElement('nav');
   navBar.id = 'global-nav';
-  // 设置内联样式（保证生效）
   navBar.style.cssText = `
     position: sticky;
     top: 0;
     background: var(--bg0);
-    z-index: 100;
+    z-index: 1000;
     display: flex;
     justify-content: center;
     border-bottom: 1px solid var(--border-light);
     padding: 0 20px;
   `;
   
-  // 创建内部容器（限制宽度）
+  // 创建内部容器（限制最大宽度 480px）
   const innerDiv = document.createElement('div');
   innerDiv.style.cssText = `
     max-width: 480px;
@@ -30,7 +29,7 @@ function createGlobalNav() {
     padding: 0;
   `;
   
-  // 创建四个按钮
+  // 页面配置
   const pages = [
     { name: '🏠 主页', page: 'main' },
     { name: '💪 运动', page: 'sport' },
@@ -38,6 +37,7 @@ function createGlobalNav() {
     { name: '📈 分析', page: 'analysis' }
   ];
   
+  // 创建按钮并绑定事件
   pages.forEach(p => {
     const btn = document.createElement('button');
     btn.textContent = p.name;
@@ -56,20 +56,29 @@ function createGlobalNav() {
       transition: 0.2s;
       white-space: nowrap;
     `;
-    btn.addEventListener('click', () => switchPage(p.page));
+    
+    // 点击事件：更新按钮样式 + 切换页面
+    btn.addEventListener('click', () => {
+      // 更新所有按钮的 active 类
+      document.querySelectorAll('#global-nav .tab-nav-btn').forEach(b => {
+        b.classList.remove('active');
+        b.style.borderBottomColor = 'transparent';
+        b.style.color = 'var(--text3)';
+      });
+      btn.classList.add('active');
+      btn.style.borderBottomColor = 'var(--ios-blue)';
+      btn.style.color = 'var(--ios-blue)';
+      // 切换页面
+      switchPage(p.page);
+    });
+    
     innerDiv.appendChild(btn);
   });
   
   navBar.appendChild(innerDiv);
   
-  // 插入到 .timeline 的上方（如果 .timeline 存在）
-  const timeline = document.querySelector('.timeline');
-  if (timeline) {
-    timeline.parentNode.insertBefore(navBar, timeline);
-  } else {
-    // 如果 timeline 不存在，则插入到 body 最前面
-    document.body.insertBefore(navBar, document.body.firstChild);
-  }
+  // 插入到 body 的最前面（所有 page-view 之外）
+  document.body.insertBefore(navBar, document.body.firstChild);
   
   // 隐藏原始导航栏（如果存在）
   const originalNav = document.querySelector('.tab-nav');
