@@ -6,8 +6,37 @@ function createGlobalNav() {
   if (!nav) return;
   const globalNav = nav.cloneNode(true);
   globalNav.id = 'global-nav';
+  
+  // 强制内联样式，保证宽度不超过 480px 并居中
+  globalNav.style.cssText = `
+    position: sticky;
+    top: 0;
+    background: var(--bg0);
+    z-index: 100;
+    display: flex;
+    justify-content: center;
+    border-bottom: 1px solid var(--border-light);
+    padding: 0 20px;
+  `;
+  
+  // 内部 .tab-nav 也要限制宽度
+  const innerNav = globalNav.querySelector('.tab-nav');
+  if (innerNav) {
+    innerNav.style.cssText = `
+      max-width: 480px;
+      width: 100%;
+      background: transparent;
+      border-bottom: none;
+      padding: 0;
+      margin: 0 auto;
+      display: flex;
+      justify-content: space-between;
+    `;
+  }
+  
   nav.style.display = 'none';
   document.body.insertBefore(globalNav, document.body.firstChild);
+  
   globalNav.querySelectorAll('.tab-nav-btn').forEach(btn => {
     btn.addEventListener('click', () => switchPage(btn.dataset.page));
   });
