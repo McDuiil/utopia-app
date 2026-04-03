@@ -1,14 +1,14 @@
 // ===== main.js: 初始化与事件绑定 =====
-// 动态创建全局导航栏（让所有页面都能看到）
+
+// 动态创建全局导航栏（全新创建，不依赖原始结构）
 function createGlobalNav() {
   if (document.getElementById('global-nav')) return;
-  const nav = document.querySelector('.tab-nav');
-  if (!nav) return;
-  const globalNav = nav.cloneNode(true);
-  globalNav.id = 'global-nav';
   
-  // 强制内联样式，保证宽度不超过 480px 并居中
-  globalNav.style.cssText = `
+  // 创建外层容器
+  const navBar = document.createElement('nav');
+  navBar.id = 'global-nav';
+  // 设置内联样式（保证生效）
+  navBar.style.cssText = `
     position: sticky;
     top: 0;
     background: var(--bg0);
@@ -19,31 +19,66 @@ function createGlobalNav() {
     padding: 0 20px;
   `;
   
-  // 内部 .tab-nav 也要限制宽度
-  const innerNav = globalNav.querySelector('.tab-nav');
-  if (innerNav) {
-    innerNav.style.cssText = `
-      max-width: 480px;
-      width: 100%;
-      background: transparent;
-      border-bottom: none;
-      padding: 0;
-      margin: 0 auto;
-      display: flex;
-      justify-content: space-between;
+  // 创建内部容器（限制宽度）
+  const innerDiv = document.createElement('div');
+  innerDiv.style.cssText = `
+    max-width: 480px;
+    width: 100%;
+    display: flex;
+    justify-content: space-between;
+    background: transparent;
+    padding: 0;
+  `;
+  
+  // 创建四个按钮
+  const pages = [
+    { name: '🏠 主页', page: 'main' },
+    { name: '💪 运动', page: 'sport' },
+    { name: '📊 历史', page: 'history' },
+    { name: '📈 分析', page: 'analysis' }
+  ];
+  
+  pages.forEach(p => {
+    const btn = document.createElement('button');
+    btn.textContent = p.name;
+    btn.className = 'tab-nav-btn';
+    if (p.page === 'main') btn.classList.add('active');
+    btn.dataset.page = p.page;
+    btn.style.cssText = `
+      flex: 1;
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      padding: 10px 4px;
+      font-size: 12px;
+      color: var(--text3);
+      cursor: pointer;
+      transition: 0.2s;
+      white-space: nowrap;
     `;
+    btn.addEventListener('click', () => switchPage(p.page));
+    innerDiv.appendChild(btn);
+  });
+  
+  navBar.appendChild(innerDiv);
+  
+  // 插入到 .timeline 的上方（如果 .timeline 存在）
+  const timeline = document.querySelector('.timeline');
+  if (timeline) {
+    timeline.parentNode.insertBefore(navBar, timeline);
+  } else {
+    // 如果 timeline 不存在，则插入到 body 最前面
+    document.body.insertBefore(navBar, document.body.firstChild);
   }
   
-  nav.style.display = 'none';
-  document.body.insertBefore(globalNav, document.body.firstChild);
-  
-  globalNav.querySelectorAll('.tab-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchPage(btn.dataset.page));
-  });
+  // 隐藏原始导航栏（如果存在）
+  const originalNav = document.querySelector('.tab-nav');
+  if (originalNav) originalNav.style.display = 'none';
 }
+
 // ------------------- 初始化与事件绑定 -------------------
 async function init() {
-    createGlobalNav();
+  createGlobalNav();
   loadSportData();
   await loadState();
   if (localStorage.getItem('theme') === 'light') document.documentElement.setAttribute('data-theme', 'light');
@@ -52,10 +87,7 @@ async function init() {
   document.getElementById('profile-btn').addEventListener('click', openProfile);
   document.getElementById('sync-btn').addEventListener('click', openSyncSettings);
   document.getElementById('plan-btn').addEventListener('click', openPlan);
-  // 顶部tab导航
-  document.querySelectorAll('.tab-nav-btn').forEach(btn => {
-    btn.addEventListener('click', () => switchPage(btn.dataset.page));
-  });
+  
   // 运动页子tab
   document.querySelectorAll('.sport-tab').forEach(tab => {
     tab.addEventListener('click', () => {
@@ -68,6 +100,7 @@ async function init() {
       if (tab.dataset.stab === 'workout') { renderTemplateQuickList(); renderRecentWorkouts(); }
     });
   });
+  
   // 运动页按钮
   document.getElementById('add-category-btn')?.addEventListener('click', () => {
     const name = prompt('输入大类名称（如：胸、背、腿）：');
@@ -116,6 +149,7 @@ async function init() {
       openMealEditor();
     }
   });
+  
   let lastDate = getK(new Date());
   function checkDateChange() {
     const today = getK(new Date());
@@ -127,6 +161,7 @@ async function init() {
   }
   setInterval(checkDateChange, 60000);
   document.addEventListener('visibilitychange', () => { if (!document.hidden) checkDateChange(); });
+  
   const today = getK(new Date());
   const dToday = getDay(today);
   if (!dToday.w) setTimeout(() => openWeight(), 500);
