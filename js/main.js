@@ -1,6 +1,20 @@
 // ===== main.js: 初始化与事件绑定 =====
+// 动态创建全局导航栏（让所有页面都能看到）
+function createGlobalNav() {
+  if (document.getElementById('global-nav')) return;
+  const nav = document.querySelector('.tab-nav');
+  if (!nav) return;
+  const globalNav = nav.cloneNode(true);
+  globalNav.id = 'global-nav';
+  nav.style.display = 'none';
+  document.body.insertBefore(globalNav, document.body.firstChild);
+  globalNav.querySelectorAll('.tab-nav-btn').forEach(btn => {
+    btn.addEventListener('click', () => switchPage(btn.dataset.page));
+  });
+}
 // ------------------- 初始化与事件绑定 -------------------
 async function init() {
+    createGlobalNav();
   loadSportData();
   await loadState();
   if (localStorage.getItem('theme') === 'light') document.documentElement.setAttribute('data-theme', 'light');
