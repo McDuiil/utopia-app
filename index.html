@@ -13,6 +13,14 @@
 </head>
 <body>
 
+<!-- 全局导航栏（移到所有页面外部，固定在顶部） -->
+<nav class="tab-nav">
+  <button class="tab-nav-btn active" data-page="main">🏠 主页</button>
+  <button class="tab-nav-btn" data-page="sport">💪 运动</button>
+  <button class="tab-nav-btn" data-page="history">📊 历史</button>
+  <button class="tab-nav-btn" data-page="analysis">📈 分析</button>
+</nav>
+
 <div id="page-main" class="page-view">
 <div class="app-container" style="padding-top:0;">
   <header class="header">
@@ -25,17 +33,7 @@
         <button class="icon-btn" id="plan-btn">⚙️</button>
       </div>
     </div>
-  </header>
-
-  <!-- 导航栏（已移到外面，所有页面共享） -->
-  <nav class="tab-nav">
-    <button class="tab-nav-btn active" data-page="main">🏠 主页</button>
-    <button class="tab-nav-btn" data-page="sport">💪 运动</button>
-    <button class="tab-nav-btn" data-page="history">📊 历史</button>
-    <button class="tab-nav-btn" data-page="analysis">📈 分析</button>
-  </nav>
-
-  <div class="timeline" id="timeline"></div>
+    <!-- 原导航栏已移除 -->
   </header>
 
   <div class="timeline" id="timeline"></div>
@@ -80,7 +78,6 @@
       <button class="sport-tab" data-stab="templates">📋 模板</button>
     </div>
 
-    <!-- 训练子页 -->
     <div id="stab-workout" class="stab-content">
       <div id="workout-home">
         <div style="text-align:center; padding:30px 0 16px;">
@@ -110,7 +107,6 @@
       </div>
     </div>
 
-    <!-- 动作库子页 -->
     <div id="stab-exercises" class="stab-content hidden">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <div style="font-size:15px; font-weight:500;">动作库</div>
@@ -119,7 +115,6 @@
       <div id="exercise-category-list"></div>
     </div>
 
-    <!-- 模板子页 -->
     <div id="stab-templates" class="stab-content hidden">
       <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
         <div style="font-size:15px; font-weight:500;">训练模板</div>
