@@ -137,14 +137,3 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
 .template-card p { font-size:11px; color:var(--text3); }
 /* 历史记录卡 */
 .workout-history-card { background:var(--card-bg); border-radius:18px; padding:14px; margin-bottom:10px; border:1px solid var(--border-light); }
-/* 强制修复导航栏宽度边界 */
-#global-nav .tab-nav {
-  max-width: 480px !important;
-  width: 100% !important;
-  margin: 0 auto !important;
-  padding: 0 20px !important;
-  display: flex !important;
-  justify-content: space-between !important;
-  background: transparent !important;
-  border-bottom: none !important;
-}
