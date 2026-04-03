@@ -2272,8 +2272,7 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
     });
     document.getElementById('add-exercise-to-session')?.addEventListener('click', () => {
       const allEx = sportData.categories.flatMap(c => c.exercises.map(e => e.name));
-      const name = prompt('输入动作名：' + (allEx.length ? '
-' + allEx.join('、') : ''));
+   const name = prompt('输入动作名：' + (allEx.length ? '\n' + allEx.join('、') : ''));
       if (!name || !name.trim()) return;
       currentSession.exercises.push({ name: name.trim(), sets: [{ weight: '', reps: '', done: false }] });
       renderSessionView();
