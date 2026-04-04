@@ -245,7 +245,7 @@ async function loadState() {
     try {
       const remote = await gistLoad(cfg.token, cfg.gistId);
       if (remote && typeof remote === 'object') {
-        S = remote;
+        S = remote;if (!S.profile.goalDeficit) S.profile.goalDeficit = 500;
         if (!S.statsCache) S.statsCache = {};
         for (let k in S.days) migrateDay(S.days[k]);
         localStorage.setItem(DB_KEY, JSON.stringify(S));
@@ -262,7 +262,7 @@ async function loadState() {
         parsed.profile.customBMR = parsed.profile.customBmr;
         delete parsed.profile.customBmr;
       }
-      S = parsed;
+      S = parsed;if (!S.profile.goalDeficit) S.profile.goalDeficit = 500;
     } catch(e) { console.warn(e); }
   } else {
     S = JSON.parse(JSON.stringify(defaultState));
