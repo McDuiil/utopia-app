@@ -1,21 +1,17 @@
-// js/render.js
-function renderAll() {
-  const d = window.getDay(window.activeK);
-  const displayDate = document.getElementById('display-date');
-  if (displayDate) displayDate.innerText = window.activeK;
-  
-  const weightDisplay = document.getElementById('weight-display');
-  if (weightDisplay) weightDisplay.innerText = d.w ? `${d.w} kg` : "点击录入体重";
-
-  const plan = window.getPlan(d.p, d.m);
-  
-  // 调用各个子渲染函数
-  renderDashboard(d, plan);
-  renderMeals(d, plan);
-  renderTrain(d);
-  renderTimeline();
-  updateFooter(d, plan);
+// 补全 render.js 缺失的 UI 函数
+function showBasePanel(html) {
+  const panel = document.getElementById('base-panel-content');
+  if (!panel) {
+      // 如果 HTML 里没这个 ID，就用 alert 兜底
+      alert("请在 HTML 中添加 id='base-panel-content' 的容器");
+      return;
+  }
+  panel.innerHTML = html + `<button id="closeBaseBtn" style="width:100%; color:var(--text3); border:none; background:none; margin-top:20px;">关闭</button>`;
+  document.getElementById('closeBaseBtn').addEventListener('click', closeBase);
+  document.getElementById('base-overlay').classList.remove('hidden');
 }
 
-// ... 保持你 render.js 中其他的 renderMeals, renderDashboard 等函数不变 ...
-// 但要确保它们内部调用的函数（如 getMeal）都挂载在 window 上
+function closeBase() {
+  const overlay = document.getElementById('base-overlay');
+  if (overlay) overlay.classList.add('hidden');
+}
