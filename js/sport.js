@@ -1,29 +1,24 @@
-// ... 保留原来的变量定义 (SPORT_KEY, sportData 等) ...
+const SPORT_KEY = 'utopia_v10_sport'; // 统一运动键名
 
-// 核心：重构后的 switchPage 函数
-function switchPage(page) {
-    // 1. 隐藏所有页面
-    document.querySelectorAll('.page-view').forEach(p => p.classList.add('hidden'));
+function loadSportData() {
+    let data = localStorage.getItem(SPORT_KEY);
     
-    // 2. 显示目标页面
-    const target = document.getElementById(`page-${page}`);
-    if (target) target.classList.remove('hidden');
-
-    // 3. 高亮导航栏
-    if (window.UtopiaNav) window.UtopiaNav.setActive(page);
-
-    // 4. 指令分发（关键点！）
-    if (page === 'history') {
-        window.UtopiaHistory.init('history-page-content');
-    } else if (page === 'analysis') {
-        window.UtopiaAnalysis.init('analysis-page-content');
-    } else if (page === 'sport') {
-        renderSportPage();
+    // 兼容逻辑：如果没有新运动键，去尝试读旧的
+    if (!data) {
+        data = localStorage.getItem('utopia_sport_v1') || localStorage.getItem('utopia_sport');
+        if (data) localStorage.setItem(SPORT_KEY, data);
     }
+
+    sportData = data ? JSON.parse(data) : { categories: [], templates: [], sessions: [] };
     
-    // 5. 处理主页底部按钮
-    const footer = document.querySelector('.footer-check');
-    if(footer) footer.style.display = (page === 'main') ? '' : 'none';
+    // 确保基础分类存在，防止页面白屏
+    if (sportData.categories.length === 0) {
+        sportData.categories = ["胸部", "背部", "肩部", "腿部", "手臂", "核心", "有氧"];
+    }
 }
 
-// ... 后面保留具体的训练逻辑 (startWorkout, finishSession 等) ...
+function saveSportData() {
+    localStorage.setItem(SPORT_KEY, JSON.stringify(sportData));
+}
+
+// ... 下面保留你原本的 workout 逻辑 ...
