@@ -102,13 +102,13 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   position: sticky;
   top: 0;
   background: var(--bg0);
-  z-index: 100;
+  z-index: 200;
   display: flex;
   justify-content: center;
-  border-bottom: 1px solid var(--border-light);
+  border-bottom: 2px solid var(--border-light);
   padding: 0 20px;
-  max-width: 480px;
-  margin: 0 auto;
+  width: 100%;
+  box-sizing: border-box;
 }
 .tab-nav-btn {
   flex: 1;
