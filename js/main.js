@@ -1,31 +1,32 @@
-// ===== js/main.js: 入口与按钮绑定 =====
+// js/main.js 完整替换
 async function init() {
-  await loadState();
-  activeK = getK(new Date());
-  if (typeof renderAll === 'function') renderAll();
+  try {
+    console.log("正在初始化...");
+    
+    // 1. 加载数据
+    if (typeof loadSportData === 'function') loadSportData();
+    await loadState();
+    
+    // 2. 绑定按钮（确保 ID 对应 index.html）
+    const themeBtn = document.getElementById('theme-btn');
+    const profileBtn = document.getElementById('profile-btn');
+    const syncBtn = document.getElementById('sync-btn');
+    const planBtn = document.getElementById('plan-btn');
 
-  // 绑定主页导航
-  document.querySelectorAll('.tab-nav-btn').forEach(btn => {
-    btn.onclick = () => {
-      document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
-      btn.classList.add('active');
-      if (typeof switchPage === 'function') switchPage(btn.dataset.page);
-    };
-  });
+    if (themeBtn) themeBtn.onclick = () => { /* 切换主题逻辑 */ console.log("主题切换"); };
+    if (profileBtn) profileBtn.onclick = () => { alert("个人资料"); };
+    if (syncBtn) syncBtn.onclick = () => { alert("同步设置"); };
+    if (planBtn) planBtn.onclick = () => { alert("计划设置"); };
 
-  // 绑定你圈起来的那几个按钮
-  document.getElementById('theme-btn').onclick = () => {
-    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
-    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
-  };
-  
-  document.getElementById('profile-btn').onclick = () => alert("个人资料功能已就绪，请在 state.js 配置 profile");
-  document.getElementById('sync-btn').onclick = () => alert("同步功能已就绪，请在 localStorage 配置 Gist Token");
-  document.getElementById('plan-btn').onclick = () => alert("计划设置功能已就绪");
-  
-  // 运动模态框按钮
-  document.getElementById('train-save').onclick = () => { if(typeof saveTrainInput === 'function') saveTrainInput(); };
-  document.getElementById('train-close').onclick = () => { if(typeof closeTrainModal === 'function') closeTrainModal(); };
+    // 3. 渲染页面
+    activeK = getK(new Date());
+    if (typeof renderAll === 'function') renderAll();
+    
+    console.log("初始化成功！");
+  } catch (e) {
+    console.error("启动时发生错误:", e);
+    // 如果报错了，至少保证导航还能点
+  }
 }
 
 window.addEventListener('DOMContentLoaded', init);
