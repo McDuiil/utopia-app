@@ -314,7 +314,15 @@ function getDay(k) {
     save();
   }
   const day = S.days[k];
-  if (day.customMeals === undefined) migrateDay(day);
+   if (day.customMeals === undefined) migrateDay(day);
+  // 确保 _mealList 存在（用于动态增删餐食）
+  if (!day.customMeals._mealList) {
+    const plan = getPlan(day.p, day.m);
+    day.customMeals._mealList = plan.meals.map((m, idx) => ({
+      ...m,
+      _originalIdx: idx   // 保留原始索引用于重置
+    }));
+  }
   if (day.bmr === undefined) day.bmr = calculateBMR(S.profile);
   return day;
 }
