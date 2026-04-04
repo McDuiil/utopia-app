@@ -1,35 +1,10 @@
-// ===== js/main.js: 入口启动 =====
-let currentTrainType = null;
-
+// ===== js/main.js: 入口与按钮绑定 =====
 async function init() {
-  console.log("Utopia Initializing...");
-  
-  // 1. 加载运动基础配置
-  if (typeof loadSportData === 'function') loadSportData();
-  
-  // 2. 加载用户数据
   await loadState();
-  
-  // 3. 确定当前选中的日期
   activeK = getK(new Date());
-  
-  // 4. 恢复黑夜模式
-  const savedTheme = localStorage.getItem('utopia_theme') || 'light';
-  document.documentElement.setAttribute('data-theme', savedTheme);
+  if (typeof renderAll === 'function') renderAll();
 
-  // 5. 渲染页面
-  if (typeof renderAll === 'function') {
-    renderAll();
-  }
-
-  // 6. 绑定全局基础按钮
-  document.getElementById('theme-btn').onclick = toggleTheme;
-  document.getElementById('train-save').onclick = saveTrainInput;
-  document.getElementById('train-close').onclick = closeTrainModal;
-  document.getElementById('train-plus50').onclick = () => adjustTrain(50);
-  document.getElementById('train-minus50').onclick = () => adjustTrain(-50);
-
-  // 7. 绑定导航切换
+  // 绑定主页导航
   document.querySelectorAll('.tab-nav-btn').forEach(btn => {
     btn.onclick = () => {
       document.querySelectorAll('.tab-nav-btn').forEach(b => b.classList.remove('active'));
@@ -37,6 +12,20 @@ async function init() {
       if (typeof switchPage === 'function') switchPage(btn.dataset.page);
     };
   });
+
+  // 绑定你圈起来的那几个按钮
+  document.getElementById('theme-btn').onclick = () => {
+    const isDark = document.documentElement.getAttribute('data-theme') === 'dark';
+    document.documentElement.setAttribute('data-theme', isDark ? 'light' : 'dark');
+  };
+  
+  document.getElementById('profile-btn').onclick = () => alert("个人资料功能已就绪，请在 state.js 配置 profile");
+  document.getElementById('sync-btn').onclick = () => alert("同步功能已就绪，请在 localStorage 配置 Gist Token");
+  document.getElementById('plan-btn').onclick = () => alert("计划设置功能已就绪");
+  
+  // 运动模态框按钮
+  document.getElementById('train-save').onclick = () => { if(typeof saveTrainInput === 'function') saveTrainInput(); };
+  document.getElementById('train-close').onclick = () => { if(typeof closeTrainModal === 'function') closeTrainModal(); };
 }
 
 window.addEventListener('DOMContentLoaded', init);
