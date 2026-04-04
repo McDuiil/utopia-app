@@ -107,8 +107,10 @@ select.ios-input { -webkit-appearance: none; appearance: none; text-align-last: 
   justify-content: center;
   border-bottom: 2px solid var(--border-light);
   padding: 0 20px;
-  width: 100%;
+  max-width: 480px;
+  margin: 0 auto;
   box-sizing: border-box;
+  width: 100%;
 }
 .tab-nav-btn {
   flex: 1;
