@@ -1,11 +1,10 @@
-// ===== js/state.js: 完整状态管理 (防抖修正版) =====
+// ===== js/state.js: 完整状态管理与同步逻辑 =====
 const DB_KEY = 'utopia_state_v2';
 const GIST_FILENAME = 'utopia_v2.json';
 let S = { version: 2, days: {}, profile: {}, statsCache: {} };
 let activeK = ''; 
 let saveTimer = null;
 
-// 云端同步逻辑
 function getGistConfig() {
   return { token: localStorage.getItem('utopia_github_token') || '', gistId: localStorage.getItem('utopia_gist_id') || '' };
 }
@@ -31,8 +30,8 @@ function save() {
   if (cfg.token && cfg.gistId) {
     if (saveTimer) clearTimeout(saveTimer);
     saveTimer = setTimeout(() => {
-      gistSave(cfg.token, cfg.gistId, S).then(() => console.log('☁️ Synced')).catch(console.error);
-    }, 800); // 800ms 防抖，彻底解决 409
+      gistSave(cfg.token, cfg.gistId, S).then(() => console.log('☁️ 已同步')).catch(console.error);
+    }, 1000); // 增加防抖时长，防止 409
   }
 }
 
@@ -44,7 +43,7 @@ async function loadState() {
     try {
       const remote = await gistLoad(cfg.token, cfg.gistId);
       if (remote) S = remote;
-    } catch(e) { console.warn('Cloud load failed'); }
+    } catch(e) { console.warn('云端加载失败'); }
   }
   if (!S.statsCache) S.statsCache = {};
 }
@@ -61,7 +60,7 @@ function getDay(k) {
   return S.days[k];
 }
 
-// 补全 render.js 需要的函数
+// 补全 render.js 必须调用的逻辑接口
 function updateStatsForDate(k) { save(); }
 function isStrengthValid(d) { return (d.s > 0) || (d.ps && d.ps.trim() !== ''); }
 function isCardioValid(d) { return (d.c > 0) || (d.pc && d.pc.trim() !== ''); }
