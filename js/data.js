@@ -1,4 +1,4 @@
-// ===== js/data.js: 完整方案数据 =====
+// ===== js/data.js: 完整方案数据与核心工具 =====
 const MATRIX = {
   1: { 
     train: { 
@@ -21,13 +21,13 @@ const MATRIX = {
   }
 };
 
-// 必须存在的函数：供 render.js 调用
+// 核心函数：供 render.js 必须调用的接口
 function getPlan(phase, mode) {
   const p = MATRIX[phase] || MATRIX[1];
   return p[mode] || p.train;
 }
 
-// 必须存在的函数：计算基础代谢
+// 核心函数：基础代谢计算
 function calculateBMR(profile) {
   const w = profile.weight || 67, h = profile.height || 170, a = profile.age || 25;
   if (profile.gender === 'female') return Math.round(10 * w + 6.25 * h - 5 * a - 161);
