@@ -1,13 +1,23 @@
-// ===== js/state.js: 存储逻辑 =====
+// ===== js/state.js: 存储逻辑修复 =====
 const DB_KEY = 'utopia_state_v2';
 let S = { version: 2, days: {}, profile: {}, statsCache: {} };
 let activeK = '';
 
-function save() { localStorage.setItem(DB_KEY, JSON.stringify(S)); }
+function save() {
+  localStorage.setItem(DB_KEY, JSON.stringify(S));
+}
 
 async function loadState() {
   const stored = localStorage.getItem(DB_KEY);
-  if (stored) S = JSON.parse(stored);
+  if (stored) {
+    try {
+      S = JSON.parse(stored);
+      console.log("数据加载成功，当前天数:", Object.keys(S.days).length);
+    } catch(e) {
+      console.error("数据解析失败");
+    }
+  }
+  if (!S.days) S.days = {};
 }
 
 function getK(date) {
@@ -20,7 +30,7 @@ function getDay(k) {
   return S.days[k];
 }
 
-// 供 render.js 使用的工具函数
+// 补齐工具函数，防止 render.js 中断
 function updateStatsForDate(k) { save(); }
 function isStrengthValid(d) { return d && (d.s > 0 || (d.ps && d.ps.length > 0)); }
 function isCardioValid(d) { return d && (d.c > 0 || (d.pc && d.pc.length > 0)); }
