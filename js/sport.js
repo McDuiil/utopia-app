@@ -37,15 +37,6 @@ function switchPage(page) {
 
 function openHistoryInPage() {
   const container = document.getElementById('history-page-content');
-  // 复用openHistory逻辑，渲染到容器内
-  const tmpOverlay = document.createElement('div');
-  document.body.appendChild(tmpOverlay);
-  const origShow = window._origShowBase;
-  openHistory();
-  // openHistory uses showBasePanel which uses base-overlay; 
-  // instead we render calendar directly
-  closeBase();
-  document.body.removeChild(tmpOverlay);
   renderHistoryPage(container);
 }
 
@@ -147,45 +138,7 @@ function renderHistoryPage(container) {
 
 function openAnalysisInPage() {
   const container = document.getElementById('analysis-page-content');
-  container.style.paddingTop = '16px';
-  // 直接调用openAnalysis但渲染到页面内
-  openAnalysis();
-  // 把base-panel内容搬过来
-  setTimeout(() => {
-    const panel = document.getElementById('base-panel-content');
-    if (panel) {
-      container.innerHTML = panel.innerHTML;
-      closeBase();
-      // 重新绑定tab事件
-      container.querySelectorAll('.tab-btn').forEach(btn => {
-        btn.addEventListener('click', () => {
-          container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-          btn.classList.add('active');
-          container.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-          const tabEl = container.querySelector(`#tab${btn.dataset.tab}`);
-          if (tabEl) tabEl.classList.remove('hidden');
-        });
-      });
-      container.querySelector('#applySuggestionBtn')?.addEventListener('click', () => {
-        applyPhaseSuggestion(getDay(activeK).p + 1);
-      });
-      setTimeout(() => {
-        const pieCanvas = container.querySelector('#macroPie');
-        if (pieCanvas) {
-          const sorted = Object.keys(S.days).sort().reverse();
-          const recentDays = sorted.slice(0,7);
-          let totalCarb=0,totalProt=0,totalFat=0,count=0;
-          for (let k of recentDays) {
-            const d = S.days[k]; const plan = getPlan(d.p,d.m);
-            if(plan){let cur={c:0,p:0,f:0};d.checked.forEach(idx=>{const m=getMeal(plan,idx,d.customMeals);cur.c+=m.c;cur.p+=m.p;cur.f+=m.f;});totalCarb+=cur.c;totalProt+=cur.p;totalFat+=cur.f;count++;}
-          }
-          drawPieChart(pieCanvas,[totalCarb/count||0,totalProt/count||0,totalFat/count||0],['碳水','蛋白','脂肪']);
-        }
-        const heatCanvas = container.querySelector('#heatmapCanvas');
-        if (heatCanvas) drawHeatmap(heatCanvas, Object.keys(S.days).sort().reverse().slice(0,30));
-      }, 50);
-    }
-  }, 50);
+  openAnalysis(container);
 }
 
 // ---- 运动页渲染 ----
