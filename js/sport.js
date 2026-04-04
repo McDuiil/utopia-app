@@ -21,10 +21,19 @@ function saveSportData() {
 
 // 页面切换
 function switchPage(page) {
-  ['main','sport','history','analysis'].forEach(p => {
-    const el = document.getElementById(`page-${p}`);
-    if (el) el.classList.toggle('hidden', p !== page);
-  });
+['main','sport','history','analysis'].forEach(p => {
+  const el = document.getElementById(`page-${p}`);
+  if (!el) return;
+  if (p === 'main') {
+    // main页只隐藏内容区，不隐藏整个page-main（因为nav在里面）
+    const content = el.querySelector('.app-container');
+    if (content) content.style.display = p === page ? '' : 'none';
+    const footer = document.querySelector('.footer-check');
+    if (footer) footer.style.display = p === page ? '' : 'none';
+  } else {
+    el.classList.toggle('hidden', p !== page);
+  }
+});
   document.querySelectorAll('.tab-nav-btn').forEach(btn => {
     btn.classList.toggle('active', btn.dataset.page === page);
   });
