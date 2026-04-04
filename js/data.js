@@ -1,9 +1,11 @@
-/**
- * Utopia Data Center - 核心数据基石
- */
-window.S = window.S || {}; // 强制初始化全局变量 S
+// 初始化全局变量，确保后续所有文件都能找到它
+window.S = window.S || {}; 
+window.sportData = window.sportData || {};
 
-// 1. 核心常量定义
+// 统一存储键名，仅在此处定义一次
+window.DB_KEY = "utopia_v10";
+window.SPORT_KEY = "utopia_v10_sport";
+
 const MATRIX = {
     1: { train: { total:{k:1700,c:206,p:92,f:50} }, rest: { total:{k:1178,c:110,p:74.5,f:45} } },
     2: { train: { total:{k:1540,c:172,p:88,f:50} }, rest: { total:{k:1098,c:97,p:69.8,f:35} } },
@@ -17,8 +19,3 @@ const FOOD_DB = {
     "鸡胸肉": { kcal: 165, carb: 0, protein: 31, fat: 3.6, unit: "g" },
     "蔬菜": { kcal: 25, carb: 5, protein: 1, fat: 0.2, unit: "g" }
 };
-
-// 2. 存储键名（必须与 state.js 一致）
-window.DB_KEY = "utopia_v10"; 
-
-console.log("✅ data.js 加载成功，S 已初始化");
