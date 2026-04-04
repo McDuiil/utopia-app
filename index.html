@@ -1,96 +1,95 @@
 <!DOCTYPE html>
 <html lang="zh-CN" translate="no">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="theme-color" content="#007AFF">
-    <title>Utopia · 减脂备赛助手</title>
-    <link rel="stylesheet" href="css/style.css">
-    <style>
-        /* 补充一些基础层级样式，确保导航不被遮挡 */
-        .page-view { min-height: 100vh; padding-bottom: 80px; }
-        .hidden { display: none !important; }
-        .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 5px; text-align: center; }
-        .cal-day { padding: 10px 0; border-radius: 8px; background: var(--bg2); cursor: pointer; position: relative; }
-        .cal-day.has-data { background: var(--glass); border: 1px solid var(--ios-blue); }
-        .cal-kcal { display: block; font-size: 9px; color: var(--text3); }
-        .cal-dot { font-size: 10px; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="theme-color" content="#007AFF">
+<title>Utopia · 减脂备赛助手</title>
+<link rel="stylesheet" href="css/style.css">
 </head>
 <body>
 
 <div id="page-main" class="page-view">
-    <div class="app-container">
-        <header class="header">
-            <div class="header-top">
-                <h1>Utopia <span id="display-date" style="font-size:12px; color:var(--text3);"></span></h1>
-                <div class="header-actions">
-                    <button class="icon-btn" id="theme-btn">🌓</button>
-                    <button class="icon-btn" id="profile-btn">👤</button>
-                    <button class="icon-btn" id="sync-btn">☁️</button>
-                    <button class="icon-btn" id="plan-btn">⚙️</button>
-                </div>
-            </div>
-        </header>
-        <div class="dashboard">
-            <div id="weight-display" class="weight-badge">-- kg</div>
-            <div class="ring-box">
-                <svg class="ring-svg"><circle class="ring-bg" cx="75" cy="75" r="52" /><circle id="ring-fill" class="ring-fill" cx="75" cy="75" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7" /></svg>
-                <div class="ring-info">
-                    <div class="ring-val" id="kcal-in">0</div>
-                    <div style="font-size:10px; color:var(--text3)">IN / <span id="kcal-target">0</span></div>
-                </div>
-            </div>
-            <div class="macro-grid" id="macro-grid"></div>
+  <div class="app-container" style="padding-top:0;">
+    <header class="header">
+      <div class="header-top">
+        <h1>Utopia <span id="display-date" style="font-size:12px; color:var(--text3);"></span></h1>
+        <div class="header-actions">
+          <button class="icon-btn" id="theme-btn">🌓</button>
+          <button class="icon-btn" id="profile-btn">👤</button>
+          <button class="icon-btn" id="sync-btn">☁️</button>
+          <button class="icon-btn" id="plan-btn">⚙️</button>
         </div>
-        <div id="meal-list"></div>
-        <div id="train-list" style="margin-top:20px;"></div>
+      </div>
+    </header>
+    <div class="timeline" id="timeline"></div>
+    <div class="dashboard">
+      <div id="weight-display" class="weight-badge">-- kg</div>
+      <div class="ring-box">
+        <svg class="ring-svg">
+          <circle class="ring-bg" cx="75" cy="75" r="52" />
+          <circle id="ring-fill" class="ring-fill" cx="75" cy="75" r="52" stroke-dasharray="326.7" stroke-dashoffset="326.7" />
+        </svg>
+        <div class="ring-info">
+          <div class="ring-val" id="kcal-in">0</div>
+          <div style="font-size:10px; color:var(--text3)">IN / <span id="kcal-target">0</span></div>
+        </div>
+      </div>
+      <div class="macro-grid" id="macro-grid"></div>
     </div>
+    <div class="section-title" id="sec-title">计划执行</div>
+    <div id="meal-list"></div>
+    <div class="section-title">运动消耗</div>
+    <div id="train-list"></div>
+  </div>
 </div>
 
 <div id="page-sport" class="page-view hidden">
-    <div class="app-container">
-        <div class="sport-tabs">
-            <button class="sport-tab active" data-stab="workout">🏋️ 训练</button>
-            <button class="sport-tab" data-stab="exercises">📚 动作库</button>
-            <button class="sport-tab" data-stab="templates">📋 模板</button>
-        </div>
-        <div id="stab-workout" class="stab-content">
-            <div id="workout-home">
-                <button class="primary-btn" id="start-blank-btn" style="margin-top:20px;">空白训练</button>
-                <div id="template-quick-list"></div>
-            </div>
-            <div id="workout-session" class="hidden">
-                <div style="display:flex; justify-content:space-between; margin-bottom:15px;">
-                    <h2 id="session-title">正在训练</h2>
-                    <span id="session-timer" style="color:var(--ios-blue);">00:00</span>
-                </div>
-                <div id="session-exercises"></div>
-                <button class="primary-btn" id="finish-session-btn" style="margin-top:10px;">完成训练</button>
-            </div>
-        </div>
-        <div id="stab-exercises" class="stab-content hidden">
-            <div id="exercise-category-list"></div>
-        </div>
-        <div id="stab-templates" class="stab-content hidden">
-            <div id="template-list"></div>
-        </div>
+  <div class="app-container">
+    <div class="sport-tabs">
+      <button class="sport-tab active" data-stab="workout">🏋️ 训练</button>
+      <button class="sport-tab" data-stab="exercises">📚 动作库</button>
+      <button class="sport-tab" data-stab="templates">📋 模板</button>
     </div>
-</div>
-
-<div id="page-history" class="page-view hidden">
-    <div class="app-container" id="history-page-content">
+    <div id="stab-workout" class="stab-content">
+      <div id="workout-home">
+        <button class="primary-btn" id="start-blank-btn" style="margin-top:20px;">空白训练</button>
+        <div id="template-quick-list" style="margin-top:20px;"></div>
+        <div id="recent-workout-list" style="margin-top:20px;"></div>
+      </div>
+      <div id="workout-session" class="hidden">
+        <div style="display:flex; align-items:center; justify-content:space-between; margin-bottom:15px;">
+          <h2 id="session-title">正在训练</h2>
+          <span id="session-timer" style="color:var(--ios-blue); font-weight:bold;">00:00</span>
         </div>
+        <div id="session-exercises"></div>
+        <button class="primary-btn" id="add-exercise-to-session" style="margin-top:15px; background:var(--glass);">+ 添加动作</button>
+        <button class="primary-btn" id="finish-session-btn" style="margin-top:10px;">完成训练</button>
+      </div>
+    </div>
+    <div id="stab-exercises" class="stab-content hidden">
+      <button class="icon-btn" id="add-category-btn" style="margin-bottom:10px;">+ 添加分类</button>
+      <div id="exercise-category-list"></div>
+    </div>
+    <div id="stab-templates" class="stab-content hidden">
+      <button class="icon-btn" id="add-template-btn" style="margin-bottom:10px;">+ 新建模板</button>
+      <div id="template-list"></div>
+    </div>
+  </div>
 </div>
 
-<div id="page-analysis" class="page-view hidden">
-    <div class="app-container" id="analysis-page-content">
-        </div>
-</div>
+<div id="page-history" class="page-view hidden"><div class="app-container" id="history-page-content"></div></div>
+<div id="page-analysis" class="page-view hidden"><div class="app-container" id="analysis-page-content"></div></div>
 
-<div class="footer-check">
-    <button id="final-btn" class="confirm-btn">确认今日录入</button>
-</div>
+<div class="footer-check"><button id="final-btn" class="confirm-btn">等待任务完成</button></div>
 
-<script src="js/data.js"></script>      <script src="js/state.js"></script>     <script src="js/render.js"></script>    <script src="js/history.js"></script>   <script src="js/analysis.js"></script>  <script src="js/sport.js"></script>     <script src="js/navigation.js"></script><script src="js/main.js"></script>      </body>
-</html>
+<script src="js/data.js"></script>
+<script src="js/state.js"></script>
+<script src="js/render.js"></script>
+
+<script src="js/history.js"></script>
+<script src="js/analysis.js"></script>
+
+<script src="js/sport.js"></script>
+<script src="js/navigation.js"></script>
+<script src="js/main.js"></script>
