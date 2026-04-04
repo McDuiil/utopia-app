@@ -3,7 +3,7 @@ function renderAll() {
   const d = getDay(activeK);
   document.getElementById('display-date').innerText = activeK;
   document.getElementById('weight-display').innerText = d.w ? `${d.w} kg` : "点击录入体重";
-  document.getElementById('sec-title').innerHTML = `计划执行 (阶段 ${d.p} · ${d.m==='train'?'训练日':'休息日'}) <span class="edit-meal-icon" id="edit-meal-btn">✏️ 自定义餐食</span>`;
+ document.getElementById('sec-title').innerHTML = `计划执行 (阶段 ${d.p} · ${d.m==='train'?'训练日':'休息日'})`;
 
   const plan = getPlan(d.p, d.m);
   renderMeals(d, plan);
@@ -14,11 +14,15 @@ function renderAll() {
 }
 
 function renderMeals(d, plan) {
-  const mealList = d.customMeals && d.customMeals._mealList;
-  const meals = mealList || plan.meals;
+  // 确保 _mealList 存在
+  if (!d.customMeals._mealList) {
+    d.customMeals._mealList = plan.meals.map((m, idx) => ({ ...m, _originalIdx: idx }));
+    save();
+  }
+  let meals = d.customMeals._mealList;
   let mealHtml = '';
   for (let idx = 0; idx < meals.length; idx++) {
-    const m = mealList ? meals[idx] : getMeal(plan, idx, d.customMeals);
+    const m = meals[idx];
     const isChecked = d.checked.includes(idx);
     const c = Math.round(m.c ?? 0);
     const p = Math.round(m.p ?? 0);
@@ -31,7 +35,10 @@ function renderMeals(d, plan) {
             <h3>${m.i} ${m.n} <span style="font-size:10px; color:var(--text3)">${m.t||''}</span></h3>
             <p>${m.ings.map(ig => `<span class="ing-tag">${ig.n} ${ig.a}</span>`).join('')}</p>
           </div>
-          <div style="font-family:var(--mono); font-size:13px; color:var(--text2); flex-shrink:0; margin-left:8px;">${Math.round(m.k)}<span style="font-size:9px; color:var(--text3)">kcal</span></div>
+          <div style="display:flex; align-items:center; gap:8px;">
+            <div style="font-family:var(--mono); font-size:13px; color:var(--text2);">${Math.round(m.k)}<span style="font-size:9px; color:var(--text3)">kcal</span></div>
+            <button class="delete-meal-btn icon-btn" data-idx="${idx}" style="background:var(--ios-red); color:white; padding:4px 8px;">🗑️</button>
+          </div>
         </div>
         <div class="card-macro">
           <span class="macro-tag carb">碳 ${c}g</span>
@@ -41,7 +48,57 @@ function renderMeals(d, plan) {
       </div>
     `;
   }
+  // 底部添加按钮
+  mealHtml += `<button id="add-meal-btn" class="primary-btn secondary-btn" style="margin-top:12px;">+ 添加一餐</button>`;
   document.getElementById('meal-list').innerHTML = mealHtml;
+
+  // 删除按钮事件
+  document.querySelectorAll('.delete-meal-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const idx = parseInt(btn.dataset.idx);
+      if (confirm('删除这一餐？后续餐食会自动前移。')) {
+        d.customMeals._mealList.splice(idx, 1);
+        // 重建 checked 数组（移除大于 idx 的索引并减1）
+        let newChecked = d.checked.filter(i => i !== idx).map(i => i > idx ? i-1 : i);
+        d.checked = newChecked;
+        updateStatsForDate(activeK);
+        save();
+        renderAll();
+      }
+    });
+  });
+
+  // 添加按钮事件
+  const addBtn = document.getElementById('add-meal-btn');
+  if (addBtn) {
+    addBtn.addEventListener('click', () => {
+      const name = prompt('餐名（如：加餐）', '自定义餐');
+      if (!name) return;
+      const kcal = parseFloat(prompt('热量 (kcal)', '300'));
+      if (isNaN(kcal)) return;
+      const carb = parseFloat(prompt('碳水 (g)', '30'));
+      const prot = parseFloat(prompt('蛋白 (g)', '20'));
+      const fat = parseFloat(prompt('脂肪 (g)', '10'));
+      const newMeal = {
+        n: name,
+        t: '',
+        i: '🍽️',
+        k: kcal,
+        c: carb,
+        p: prot,
+        f: fat,
+        ings: [{ n: '自定义', a: '' }]
+      };
+      d.customMeals._mealList.push(newMeal);
+      // checked 数组不变（新餐默认未完成）
+      updateStatsForDate(activeK);
+      save();
+      renderAll();
+    });
+  }
+
+  // 原有的勾选事件
   document.querySelectorAll('.cb-circle').forEach(el => {
     el.addEventListener('click', (e) => {
       e.stopPropagation();
@@ -51,7 +108,7 @@ function renderMeals(d, plan) {
   });
   document.querySelectorAll('.card').forEach(card => {
     card.addEventListener('click', (e) => {
-      if (e.target.classList.contains('cb-circle')) return;
+      if (e.target.classList.contains('cb-circle') || e.target.classList.contains('delete-meal-btn')) return;
       const idx = parseInt(card.dataset.mealIdx);
       toggleMeal(idx);
     });
