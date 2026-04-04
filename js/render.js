@@ -110,10 +110,6 @@ function renderDashboard(d, plan) {
     el.querySelector('.mc-fill').style.width = (Math.min(cur[map[key][0]] / map[key][1], 1) * 100) + '%';
   }
 
-  const net = getNetDeficit(d, plan);
-  const netEl = document.getElementById('net-calorie-display');
-  netEl.innerText = `🔥 净赤字: ${net >=0 ? '+' : ''}${Math.round(net)} kcal (BMR已计)`;
-  netEl.style.color = net < 0 ? 'var(--ios-green)' : (net > 0 ? 'var(--ios-orange)' : 'var(--ios-teal)');
 }
 
 function renderTimeline() {
@@ -711,7 +707,7 @@ function openHistory() {
   });
 }
 
-function openAnalysis() {
+function openAnalysis(container) {
   const sorted = Object.keys(S.days).sort().reverse();
   const last30 = sorted.slice(0,30);
   const recentDays = sorted.slice(0,7);
@@ -723,7 +719,7 @@ function openAnalysis() {
       let cur = {c:0,p:0,f:0};
       d.checked.forEach(idx => {
         const m = getMeal(plan, idx, d.customMeals);
-        cur.c += m.c; cur.p += m.p; cur.f += m.f;
+        cur.c += (m.c||0); cur.p += (m.p||0); cur.f += (m.f||0);
       });
       totalCarb += cur.c; totalProt += cur.p; totalFat += cur.f;
       count++;
@@ -732,93 +728,75 @@ function openAnalysis() {
   const avgCarb = count ? totalCarb/count : 0;
   const avgProt = count ? totalProt/count : 0;
   const avgFat = count ? totalFat/count : 0;
-  const pieCanvas = `<canvas id="macroPie" width="200" height="200" style="width:200px; height:200px; margin:0 auto; display:block;"></canvas>`;
   const weekly = getSummary('week');
   const monthly = getSummary('month');
-  const heatmapHtml = `<canvas id="heatmapCanvas" width="350" height="180" style="width:100%; max-width:350px; height:auto; background:var(--card-bg); border-radius:16px; margin:20px auto;"></canvas>`;
   const latestWeight = S.days[sorted[0]]?.w || S.profile.weight;
-  const weightProgress = ((S.profile.goalWeight - latestWeight) / (S.profile.goalWeight - S.profile.weight) * 100) || 0;
-  const todayPlan = getPlan(getDay(activeK).p, getDay(activeK).m);
-  const todayDeficit = getNetDeficit(getDay(activeK), todayPlan);
-  const deficitProgress = (todayDeficit / S.profile.goalDeficit) * 100;
+  const startWeight = S.profile.weight || latestWeight;
+  const goalWeight = S.profile.goalWeight || latestWeight;
+  const weightProgress = startWeight !== goalWeight
+    ? Math.min(100, Math.max(0, ((startWeight - latestWeight) / (startWeight - goalWeight)) * 100))
+    : 0;
   let bodyFatProgress = 0;
   if (S.profile.bodyFat !== null && S.profile.goalBodyFat > 0) {
     bodyFatProgress = ((S.profile.bodyFat - S.profile.goalBodyFat) / (S.profile.bodyFat - 0)) * 100;
     bodyFatProgress = Math.min(100, Math.max(0, bodyFatProgress));
   }
-  let suggestion = '';
-  if (sorted.length >= 7) {
-    let avgDeficit = 0;
-    const last7 = sorted.slice(0,7);
-    let totalDeficit = 0;
-    for (let k of last7) {
-      const stats = getStats(k);
-      if (stats) totalDeficit += stats.deficit;
-    }
-    avgDeficit = totalDeficit / 7;
-    const currentPhase = getDay(activeK).p;
-    if (avgDeficit > -S.profile.goalDeficit*0.8 && currentPhase < 4) {
-      suggestion = `
-        <div class="suggestion-card">
-          <strong>💡 阶段建议</strong><br>
-          最近7天平均赤字仅 ${Math.round(avgDeficit)} kcal，低于目标 ${S.profile.goalDeficit} kcal 的80%。<br>
-          建议尝试进入阶段 ${currentPhase+1} 以提高减脂效率。
-          <button class="icon-btn" style="margin-top:8px;" id="applySuggestionBtn">应用建议</button>
-        </div>
-      `;
-    }
-  }
 
-  const html = `
-    <div class="tab-bar" id="analysisTabs">
-      <button class="tab-btn active" data-tab="goals">🎯 目标</button>
-      <button class="tab-btn" data-tab="charts">🥧 营养</button>
-      <button class="tab-btn" data-tab="weekly">📅 周月汇总</button>
-      <button class="tab-btn" data-tab="heatmap">🔥 热力图</button>
-    </div>
-    ${suggestion}
-    <div id="tabGoals" class="tab-content">
-      <div class="goal-progress"><strong>体重目标</strong> ${latestWeight}kg → ${S.profile.goalWeight}kg<div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.max(0, weightProgress))}%"></div></div></div>
-      <div class="goal-progress"><strong>今日赤字目标</strong> ${Math.round(todayDeficit)} / ${S.profile.goalDeficit} kcal<div class="progress-bar"><div class="progress-fill" style="width:${Math.min(100, Math.max(0, deficitProgress))}%"></div></div></div>
-      <div class="goal-progress"><strong>体脂率目标</strong> ${S.profile.bodyFat !== null ? S.profile.bodyFat + '% → ' + S.profile.goalBodyFat + '%' : '未录入 → '+S.profile.goalBodyFat+'%'}<div class="progress-bar"><div class="progress-fill" style="width:${bodyFatProgress}%"></div></div></div>
-    </div>
-    <div id="tabCharts" class="tab-content hidden">
-      <h3>近7天平均宏量占比</h3>
-      ${pieCanvas}
-    </div>
-    <div id="tabWeekly" class="tab-content hidden">
-      <h3>本周汇总</h3>
-      <p>总赤字: ${weekly.totalDeficit} kcal | 平均赤字: ${weekly.avgDeficit} kcal</p>
-      <p>餐食完成率: ${weekly.mealCompletion}% | 运动天数: ${weekly.sportDays}</p>
-      <h3>本月汇总</h3>
-      <p>总赤字: ${monthly.totalDeficit} kcal | 平均赤字: ${monthly.avgDeficit} kcal</p>
-      <p>餐食完成率: ${monthly.mealCompletion}% | 运动天数: ${monthly.sportDays}</p>
-    </div>
-    <div id="tabHeatmap" class="tab-content hidden">
-      ${heatmapHtml}
+  container.innerHTML = `
+    <div style="padding-top:16px;">
+      <div class="tab-bar" id="analysisTabs">
+        <button class="tab-btn active" data-tab="Goals">🎯 目标</button>
+        <button class="tab-btn" data-tab="Charts">🥧 营养</button>
+        <button class="tab-btn" data-tab="Weekly">📅 周月汇总</button>
+        <button class="tab-btn" data-tab="Heatmap">🔥 热力图</button>
+      </div>
+      <div id="tabGoals" class="tab-content">
+        <div class="goal-progress"><strong>体重目标</strong> ${latestWeight}kg → ${goalWeight}kg<div class="progress-bar"><div class="progress-fill" style="width:${weightProgress}%"></div></div></div>
+        <div class="goal-progress"><strong>体脂率目标</strong> ${S.profile.bodyFat !== null ? S.profile.bodyFat + '% → ' + S.profile.goalBodyFat + '%' : '未录入 → '+S.profile.goalBodyFat+'%'}<div class="progress-bar"><div class="progress-fill" style="width:${bodyFatProgress}%"></div></div></div>
+      </div>
+      <div id="tabCharts" class="tab-content hidden">
+        <h3 style="margin-bottom:12px;">近7天平均宏量占比</h3>
+        <canvas id="macroPie" width="200" height="200" style="width:200px; height:200px; margin:0 auto; display:block;"></canvas>
+      </div>
+      <div id="tabWeekly" class="tab-content hidden">
+        <h3>本周汇总</h3>
+        <p>总摄入完成率: ${weekly.mealCompletion}% | 运动天数: ${weekly.sportDays}</p>
+        <h3 style="margin-top:16px;">本月汇总</h3>
+        <p>总摄入完成率: ${monthly.mealCompletion}% | 运动天数: ${monthly.sportDays}</p>
+      </div>
+      <div id="tabHeatmap" class="tab-content hidden">
+        <canvas id="heatmapCanvas" width="350" height="180" style="width:100%; max-width:350px; height:auto; background:var(--card-bg); border-radius:16px; margin:20px auto; display:block;"></canvas>
+      </div>
     </div>
   `;
-  showBasePanel(html);
-  if (suggestion) {
-    document.getElementById('applySuggestionBtn')?.addEventListener('click', () => {
-      const newPhase = getDay(activeK).p + 1;
-      applyPhaseSuggestion(newPhase);
+
+  // Canvas 直接在当前 DOM 中绘制，不需要 setTimeout 搬运
+  const pieCanvas = container.querySelector('#macroPie');
+  if (pieCanvas) drawPieChart(pieCanvas, [avgCarb, avgProt, avgFat], ['碳水', '蛋白', '脂肪']);
+  const heatCanvas = container.querySelector('#heatmapCanvas');
+  if (heatCanvas && last30.length) drawHeatmap(heatCanvas, last30);
+
+  // Tab 切换事件直接绑定到 container 内
+  container.querySelectorAll('.tab-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      container.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      container.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+      const tabEl = container.querySelector(`#tab${btn.dataset.tab}`);
+      if (tabEl) {
+        tabEl.classList.remove('hidden');
+        // 切到图表时重绘 canvas（因为 hidden 时尺寸为0）
+        if (btn.dataset.tab === 'Charts') {
+          const pc = container.querySelector('#macroPie');
+          if (pc) drawPieChart(pc, [avgCarb, avgProt, avgFat], ['碳水', '蛋白', '脂肪']);
+        }
+        if (btn.dataset.tab === 'Heatmap') {
+          const hc = container.querySelector('#heatmapCanvas');
+          if (hc && last30.length) drawHeatmap(hc, last30);
+        }
+      }
     });
-  }
-  setTimeout(() => {
-    const pieCanvas = document.getElementById('macroPie');
-    if (pieCanvas) drawPieChart(pieCanvas, [avgCarb, avgProt, avgFat], ['碳水', '蛋白', '脂肪']);
-    const heatCanvas = document.getElementById('heatmapCanvas');
-    if (heatCanvas && last30.length) drawHeatmap(heatCanvas, last30);
-    document.querySelectorAll('.tab-btn').forEach(btn => {
-      btn.addEventListener('click', () => {
-        document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-        btn.classList.add('active');
-        document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
-        document.getElementById(`tab${btn.dataset.tab}`).classList.remove('hidden');
-      });
-    });
-  }, 50);
+  });
 }
 
 function applyPhaseSuggestion(newPhase) {
